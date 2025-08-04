@@ -1,18 +1,16 @@
 import { useDispatch, useSelector } from 'react-redux';
-import { addItem , getCurrentQuantityById } from '../cart/cartSlice'; 
-import Button from '../../ui/Button'; 
+import { addItem, getCurrentQuantityById } from '../cart/cartSlice';
+import Button from '../../ui/Button';
 import { formatCurrency } from '../../utils/helpers';
 import DeleteItem from '../cart/DeleteItem';
+import UpdateItemQuantity from '../cart/UpdateItemQuantity';
 
 function MenuItem({ pizza }) {
   const { id, name, unitPrice, ingredients, soldOut, imageUrl } = pizza;
-  const currentQuantity = useSelector(getCurrentQuantityById(id));
   const dispatch = useDispatch();
 
+  const currentQuantity = useSelector(getCurrentQuantityById(id));
   const isInCart = currentQuantity > 0;
-
-
-  
 
   function handleAddToCart() {
     const newItem = {
@@ -20,7 +18,7 @@ function MenuItem({ pizza }) {
       name,
       quantity: 1,
       unitPrice,
-      totalPrice: unitPrice * 1,
+      totalPrice: unitPrice,
     };
     dispatch(addItem(newItem));
   }
@@ -37,6 +35,7 @@ function MenuItem({ pizza }) {
         <p className="text-sm capitalize italic text-stone-500">
           {ingredients.join(', ')}
         </p>
+
         <div className="mt-auto flex items-center justify-between">
           {!soldOut ? (
             <p className="text-sm">{formatCurrency(unitPrice)}</p>
@@ -45,11 +44,18 @@ function MenuItem({ pizza }) {
               Sold out
             </p>
           )}
-         { isInCart && <DeleteItem pizzaId={id} />}
-          {!soldOut && !isInCart && (
-            <Button type="small" onClick={handleAddToCart}>
-              Add to cart
-            </Button>
+
+          {isInCart ? (
+            <div className="flex items-center gap-2">
+              <UpdateItemQuantity pizzaId={id} />
+              <DeleteItem pizzaId={id} />
+            </div>
+          ) : (
+            !soldOut && (
+              <Button type="small" onClick={handleAddToCart}>
+                Add to cart
+              </Button>
+            )
           )}
         </div>
       </div>

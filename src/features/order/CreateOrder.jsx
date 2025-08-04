@@ -1,56 +1,40 @@
-import { Form, useActionData, useNavigation } from 'react-router-dom';
+// src/features/order/CreateOrder.jsx
+import {
+  Form,
+  useActionData,
+  useNavigation,
+  redirect,
+  useRouteError,
+} from 'react-router-dom';
 import Button from '../../ui/Button';
 import { useSelector } from 'react-redux';
+import { createOrder } from '../../services/apiRestaurant';
 
-// https://uibakery.io/regex-library/phone-number
+// Phone validation regex
 const isValidPhone = (str) =>
-  /^\+?\d{1,4}?[-.\s]?\(?\d{1,3}?\)?[-.\s]?\d{1,4}[-.\s]?\d{1,4}[-.\s]?\d{1,9}$/.test(
-    str
-  );
-
-const fakeCart = [
-  {
-    pizzaId: 12,
-    name: 'Mediterranean',
-    quantity: 2,
-    unitPrice: 16,
-    totalPrice: 32,
-  },
-  {
-    pizzaId: 6,
-    name: 'Vegetale',
-    quantity: 1,
-    unitPrice: 13,
-    totalPrice: 13,
-  },
-  {
-    pizzaId: 11,
-    name: 'Spinach and Mushroom',
-    quantity: 1,
-    unitPrice: 15,
-    totalPrice: 15,
-  },
-];
+  /^\+?\d{1,4}?[-.\s]?\(?\d{1,3}?\)?[-.\s]?\d{1,4}[-.\s]?\d{1,4}[-.\s]?\d{1,9}$/.test(str);
 
 function CreateOrder() {
   const username = useSelector((state) => state.user.Username);
+  const cart = useSelector((state) => state.cart.cart);
+  const formErrors = useActionData();
   const navigation = useNavigation();
   const isSubmitting = navigation.state === 'submitting';
-
-  const formErrors = useActionData();
-
-  // const [withPriority, setWithPriority] = useState(false);
-  const cart = fakeCart;
 
   return (
     <div className="px-4 py-6">
       <h2 className="mb-8 text-xl font-semibold">Ready to order? Let's go!</h2>
 
-      {/* <Form method="POST" action="/order/new"> */}
       <Form method="POST">
         <div className="mb-5 flex flex-col gap-2 sm:flex-row sm:items-center">
           <label className="sm:basis-40">First Name</label>
-          <input className="input grow" type="text" name="customer" defaultValue={username} required />
+          <input
+            className="input grow"
+            type="text"
+            name="customer"
+            defaultValue={username}
+            required
+          />
         </div>
 
         <div className="mb-5 flex flex-col gap-2 sm:flex-row sm:items-center">
@@ -68,12 +52,7 @@ function CreateOrder() {
         <div className="mb-5 flex flex-col gap-2 sm:flex-row sm:items-center">
           <label className="sm:basis-40">Address</label>
           <div className="grow">
-            <input
-              className="input w-full"
-              type="text"
-              name="address"
-              required
-            />
+            <input className="input w-full" type="text" name="address" required />
           </div>
         </div>
 
@@ -83,25 +62,23 @@ function CreateOrder() {
             type="checkbox"
             name="priority"
             id="priority"
-            // value={withPriority}
-            // onChange={(e) => setWithPriority(e.target.checked)}
           />
           <label htmlFor="priority" className="font-medium">
-            Want to yo give your order priority?
+            Want to give your order priority?
           </label>
         </div>
 
-        <div>
-          <input type="hidden" name="cart" value={JSON.stringify(cart)} />
-          <Button disabled={isSubmitting} type="primary">
-            {isSubmitting ? 'Placing order....' : 'Order now'}
-          </Button>
-        </div>
+        <input type="hidden" name="cart" value={JSON.stringify(cart)} />
+
+        <Button disabled={isSubmitting} type="primary">
+          {isSubmitting ? 'Placing order...' : 'Order now'}
+        </Button>
       </Form>
     </div>
   );
 }
 
+// ✅ FIXED action() with error handling and logging
 export async function action({ request }) {
   const formData = await request.formData();
   const data = Object.fromEntries(formData);
@@ -112,20 +89,33 @@ export async function action({ request }) {
     priority: data.priority === 'on',
   };
 
+  console.log("📦 Sending order to API:", order);
+
   const errors = {};
-  if (!isValidPhone(order.phone))
-    errors.phone =
-      'Please give us your correct phone number. We might need it to contact you.';
+  if (!isValidPhone(order.phone)) {
+    errors.phone = 'Please provide a valid phone number.';
+    return errors;
+  }
 
-  if (Object.keys(errors).length > 0) return errors;
+  try {
+    const newOrder = await createOrder(order);
+    return redirect(`/order/${newOrder.id}`);
+  } catch (err) {
+    console.error("❌ Failed to create order:", err);
+    throw err; // triggers error boundary
+  }
+}
 
-  // If everything is okay, create new order and redirect
-
-  // const newOrder = await createOrder(order);
-
-  // return redirect(`/order/${newOrder.id}`);
-
-  return null;
+// Optional error boundary if needed
+export function ErrorBoundary() {
+  const error = useRouteError();
+  return (
+    <div className="p-8 text-center text-red-600">
+      <h1 className="text-2xl font-bold mb-4">Something went wrong 😢</h1>
+      <p>{error.message || 'An unknown error occurred.'}</p>
+      <a href="/" className="text-blue-500 underline mt-4 block">← Go back</a>
+    </div>
+  );
 }
 
 export default CreateOrder;
